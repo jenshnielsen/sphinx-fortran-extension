@@ -1,5 +1,5 @@
-# -*- coding: utf8 -*-
-"""Sphinx extension for autodocumenting fortran codes.
+# -*- coding: utf-8 -*-
+"""Sphinx extensio1n for autodocumenting fortran codes.
 
 
 """
@@ -321,7 +321,10 @@ class F90toRst(object):
             if block['block'] in ['function', 'subroutine']:
                 varname = None
                 for iline, line in enumerate(block['desc']):
-                    m = block['vardescmatch'](line)
+                    try:
+                        m = block['vardescmatch'](line)
+                    except KeyError:
+                        m = None
                     if m: # There is a variable and its description
                     
                         # Name of variable
@@ -365,7 +368,10 @@ class F90toRst(object):
         if block['block'] in ['function', 'subroutine'] and subsrc is not None:
             for line in subsrc:
                 if line.strip().startswith('!'): continue
-                m = block['vardescsearch'](line)
+                try:
+                    m = block['vardescsearch'](line)
+                except KeyError:
+                    m = None
                 if m:
                     block['vars'][m.group('varname')]['desc'] = m.group('vardesc')
                 
@@ -862,8 +868,11 @@ class F90toRst(object):
         return self._fmt_vattr%locals() if vattr else ''
         
     def format_argtype(self, block):
-        vtype = block['typespec']
-        if vtype=='type': vtype = block['typename']
+        try:
+            vtype = block['typespec']
+            if vtype=='type': vtype = block['typename']
+        except KeyError:
+            vtype = 'Unknown'
         return vtype
  
     def format_argfield(self, blockvar, role=None, block=None):
@@ -995,7 +1004,10 @@ class F90toRst(object):
         if blocktype!='program' :
             found = []
             for iline in xrange(len(comments)):
-                m = block['vardescmatch'](comments[iline])
+                try:
+                    m = block['vardescmatch'](comments[iline])
+                except KeyError:
+                    m = None
                 if m:
                     varname = m.group('varname')
                     found.append(varname)
@@ -1016,20 +1028,21 @@ class F90toRst(object):
         module  = block.get('module')
         # - call froms
         if blocktype in ['function', 'subroutine']:
-            if block['callfrom']:
-                callfrom = []
-               
-                for fromname in block['callfrom']:
-                    if fromname in self.routines:
-                        cf = self.format_funcref(fromname, module)
-                    else:
-                        cf = ':f:prog:`%s`'%fromname
-                    callfrom.append(cf)
-                    
-                #callfrom += ', '.join([self.format_funcref(getattr(self, routines[fn]['name'], module) for fn in block['callfrom']])
-                callfrom = ':from: ' + ', '.join(callfrom)
+            if 'callfrom' in block.keys():
+                if block['callfrom']:
+                    callfrom = []
 
-                calls.append(callfrom)
+                    for fromname in block['callfrom']:
+                        if fromname in self.routines:
+                            cf = self.format_funcref(fromname, module)
+                        else:
+                            cf = ':f:prog:`%s`'%fromname
+                        callfrom.append(cf)
+
+                    #callfrom += ', '.join([self.format_funcref(getattr(self, routines[fn]['name'], module) for fn in block['callfrom']])
+                    callfrom = ':from: ' + ', '.join(callfrom)
+
+                    calls.append(callfrom)
         # - call tos
         if block['callto']:
             callto = ', '.join([self.format_funcref(fn, module) for fn in block['callto']])
